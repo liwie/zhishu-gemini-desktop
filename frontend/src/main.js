@@ -41,7 +41,7 @@ document.querySelector('#app').innerHTML = `
     <section class="panel active" id="panel-portal">
       <div class="panel-head">
         <h2>在客户端内打开智枢网站</h2>
-        <p>注册账号 → 控制台创建 API Key（sk-…）→ 粘贴到下方保存，即可调用 Gemini 对话 / Nano Banana 香蕉生图 / Veo 视频。</p>
+        <p>注册账号 →「API Keys」页创建 / 复制 Key（sk-…）→ 粘贴到下方保存。若内嵌页提示剪贴板失败，用「系统浏览器打开」复制，或按弹窗手动全选。</p>
       </div>
       <div class="toolbar">
         <button class="btn" id="btn-reload-portal">刷新网页</button>
@@ -49,10 +49,16 @@ document.querySelector('#app').innerHTML = `
         <span class="status-line" id="portal-status">正在加载 https://api.itzyk.top/ …</span>
       </div>
       <div class="portal-frame-wrap">
-        <iframe id="portal-frame" title="智枢 ZhiShu" src="https://api.itzyk.top/" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>
+        <iframe
+          id="portal-frame"
+          title="智枢 ZhiShu"
+          src="https://api.itzyk.top/keys"
+          allow="clipboard-read; clipboard-write; fullscreen"
+          referrerpolicy="strict-origin-when-cross-origin"
+        ></iframe>
         <div class="portal-fallback" id="portal-fallback">
           <div>
-            <p>若网站禁止被嵌入（X-Frame-Options），请点击下方按钮用系统浏览器打开，注册并创建 Key 后回到本页粘贴。</p>
+            <p>若内嵌页无法复制 Key（剪贴板权限），请用系统浏览器打开后复制，再粘贴到下方保存。</p>
             <button class="btn" id="btn-open-portal-2">打开 https://api.itzyk.top/</button>
           </div>
         </div>
@@ -227,7 +233,7 @@ $('btn-open-portal').addEventListener('click', () => OpenPortal())
 $('btn-open-portal-2').addEventListener('click', () => OpenPortal())
 $('btn-reload-portal').addEventListener('click', () => {
   const frame = $('portal-frame')
-  frame.src = 'https://api.itzyk.top/'
+  frame.src = 'https://api.itzyk.top/keys'
   setStatus($('portal-status'), '已刷新')
 })
 
