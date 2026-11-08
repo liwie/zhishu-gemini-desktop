@@ -71,6 +71,7 @@ document.querySelector('#app').innerHTML = `
             <label>从网站复制的 API Key</label>
             <input id="portal-key" type="password" placeholder="sk-xxxxxxxx" autocomplete="off"/>
           </div>
+          <button class="btn ghost" id="btn-clear-portal-key" style="align-self:flex-end">清除</button>
           <button class="btn warn" id="btn-save-portal-key" style="align-self:flex-end">保存 Key</button>
         </div>
         <div class="status-line" id="portal-key-status"></div>
@@ -289,6 +290,8 @@ async function loadSettings() {
   $('portal-key').value = s.api_key || ''
   if (s.masked_key) {
     setStatus($('portal-key-status'), '当前 Key：' + s.masked_key, 'ok')
+  } else {
+    setStatus($('portal-key-status'), '尚未保存 API Key')
   }
 }
 
@@ -296,6 +299,19 @@ $('btn-save-portal-key').addEventListener('click', async () => {
   try {
     const msg = await SaveSettings($('portal-key').value, $('set-base').value || 'https://api.itzyk.top/v1')
     setStatus($('portal-key-status'), msg, 'ok')
+    await loadSettings()
+  } catch (e) {
+    setStatus($('portal-key-status'), String(e), 'error')
+  }
+})
+
+$('btn-clear-portal-key').addEventListener('click', async () => {
+  try {
+    $('portal-key').value = ''
+    $('portal-key').type = 'password'
+    $('set-key').value = ''
+    await SaveSettings('', $('set-base').value || 'https://api.itzyk.top/v1')
+    setStatus($('portal-key-status'), '已清除本地 API Key', 'ok')
     await loadSettings()
   } catch (e) {
     setStatus($('portal-key-status'), String(e), 'error')

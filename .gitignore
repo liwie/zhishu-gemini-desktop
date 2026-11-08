@@ -11,5 +11,14 @@ frontend/wailsjs/runtime/package.json.bak
 .vscode/
 *.local
 .env
+.env.*
 *.log
 frontend/package.json.md5
+git.md
+
+# Local runtime / secrets (never commit)
+settings.json
+**/settings.json
+*.pem
+*.key
+credentials.json

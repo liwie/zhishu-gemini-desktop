@@ -1,4 +1,6 @@
-# 智枢 Gemini Desktop · Nano Banana 香蕉
+# 智枢 Gemini Desktop
+
+**开源桌面版 · Gemini API · 香蕉 Nano Banana 文生图 · Veo 文生视频 · 下载运行直接使用**
 
 [![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?logo=go)](https://go.dev/)
 [![Wails](https://img.shields.io/badge/Wails-v2-red)](https://wails.io/)
@@ -6,26 +8,63 @@
 [![Gemini API](https://img.shields.io/badge/Gemini-API-4285F4)](https://api.itzyk.top/)
 [![Nano Banana](https://img.shields.io/badge/Nano%20Banana-香蕉-f0b429)](https://api.itzyk.top/)
 
-开源桌面客户端（**Go + Wails**），用于体验与推广 **Gemini API** 调用：
+> 关键词：`开源项目` `桌面版` `Gemini API` `生成视频` `Gemini 香蕉` `Nano Banana` `文生图` `Veo` `下载即用` `Wails` `Golang`
 
-| 能力 | 说明 | 关键词 |
-|------|------|--------|
+跨平台开源桌面客户端（**Go + Wails**），对接 OpenAI 兼容的 Gemini 网关，开箱即用：
+
+| 能力 | 说明 | 搜索友好关键词 |
+|------|------|----------------|
 | AI 对话 | `POST /v1/chat/completions` | Gemini Flash / Pro |
 | 文生图 | `POST /v1/images/generations` | **Nano Banana** / **香蕉** / banana / `gemini-3-pro-image` |
-| 文生视频 | `POST /v1/videos/generations` + 轮询 | Veo 3.1 |
-| 获取 API Key | 客户端内打开 [api.itzyk.top](https://api.itzyk.top/) | 注册 → 创建 `sk-` Key |
+| 文生视频 | `POST /v1/videos/generations` + 轮询 | Veo 3.1 / Gemini 生成视频 |
+| 获取 API Key | 客户端内打开门户 | [api.itzyk.top](https://api.itzyk.top/) 注册 → 创建 `sk-` Key |
 
-> 本项目面向开源社区（GitHub / 码云 Gitee 等），帮助开发者快速跑通 Gemini 对话、**香蕉（Nano Banana）** 文生图与 Veo 视频，Base URL 默认指向智枢网关 **https://api.itzyk.top/v1**。
+默认 Base URL：`https://api.itzyk.top/v1`（智枢 ZhiShu 网关）。
 
 ---
 
-## 截图级流程
+## 仓库地址
 
-1. 打开应用 → **「获取 API Key」** 标签（内嵌 https://api.itzyk.top/ ）
+- GitHub：<https://github.com/Itzyk/zhishu-gemini-desktop>
+- Gitee（码云）：<https://gitee.com/Itzyk/zhishu-gemini-desktop>
+
+> 若上方链接暂未生效，请以发布后实际地址为准；欢迎 Star / Fork / Issue / PR。
+
+---
+
+## 为什么做这个项目
+
+很多开发者想快速验证 **Gemini 对话、香蕉文生图、Veo 视频**，却卡在环境、SDK 与鉴权上。本客户端把调用封装成桌面应用：**下载 → 配置 Key → 直接用**，同时源码完全开源，便于学习 OpenAI 兼容协议与桌面壳集成。
+
+---
+
+## 快速开始
+
+### 方式 A：从源码运行（推荐开发者）
+
+```bash
+# GitHub
+git clone https://github.com/Itzyk/zhishu-gemini-desktop.git
+# 或 Gitee
+# git clone https://gitee.com/Itzyk/zhishu-gemini-desktop.git
+
+cd zhishu-gemini-desktop
+
+# 依赖：Go 1.23+、Node.js 18+、Wails v2
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+wails doctor
+wails dev      # 开发热重载
+wails build    # 打包到 build/bin/
+```
+
+### 方式 B：使用流程（最终用户）
+
+1. 打开应用 → **「获取 API Key」**（内嵌 https://api.itzyk.top/ ）
 2. 注册 / 登录 → 控制台创建 API Key → 粘贴 `sk-…` 并保存  
-3. **AI 对话** / **文生图·香蕉** / **文生视频** 三页直接调用
+3. 在 **AI 对话** / **文生图·香蕉** / **文生视频** 页直接调用  
+4. 需要清空本机 Key：点「清除」，或删除用户配置目录下的 `settings.json`
 
-若网站禁止 iframe 嵌入，点「系统浏览器打开」即可，Key 仍粘贴回客户端。
+若网站禁止 iframe，点「系统浏览器打开」即可，Key 仍粘贴回客户端。
 
 ---
 
@@ -33,31 +72,14 @@
 
 - Go 1.23+
 - Node.js 18+（前端 Vite）
-- [Wails v2](https://wails.io/)：`go install github.com/wailsapp/wails/v2/cmd/wails@latest`
-- macOS / Windows / Linux 桌面开发依赖（见 [Wails 平台指引](https://wails.io/docs/gettingstarted/installation)）
-
----
-
-## 快速开始
-
-```bash
-git clone https://github.com/<your-org>/zhishu-gemini-desktop.git
-cd zhishu-gemini-desktop
-
-# 开发模式（热重载）
-wails dev
-
-# 打包桌面应用
-wails build
-```
-
-产物在 `build/bin/`。
+- [Wails v2](https://wails.io/)
+- macOS / Windows / Linux 桌面开发依赖（见 [Wails 安装指引](https://wails.io/docs/gettingstarted/installation)）
 
 ---
 
 ## 模型与别名（开源搜索友好）
 
-文生图支持社区常用别名，输入后会解析为真实 model code：
+文生图常用别名会解析为真实 model code：
 
 | 你输入 | 实际模型 |
 |--------|----------|
@@ -104,30 +126,27 @@ zhishu-gemini-desktop/
 ├── main.go
 ├── internal/
 │   ├── client/            # OpenAI 兼容 HTTP 客户端 + 香蕉别名
-│   └── config/            # 本机 API Key 持久化
+│   └── config/            # 本机 API Key 持久化（不入库）
 ├── frontend/              # Vanilla + Vite UI
+├── LICENSE                # MIT
+├── CONTRIBUTING.md
+├── SECURITY.md
 └── README.md
 ```
 
-API Key 保存在本机用户配置目录（权限 `0600`），不会写入仓库。
+API Key 仅保存在本机用户配置目录（权限 `0600`），**不会写入仓库**。
 
 ---
 
-## 开源发布（GitHub + 码云）
+## 开源协议
 
-本目录是**独立 Git 仓库**，可同时推送到：
+[MIT License](LICENSE) — Copyright (c) 2026 ZhiShu Community / 智枢开源社区
 
-```bash
-# GitHub
-git remote add github git@github.com:<your-org>/zhishu-gemini-desktop.git
-git push -u github main
+欢迎 Star、Fork、提 Issue / PR。一起把 Gemini API（含 **Nano Banana 香蕉** 文生图与 Veo 视频）推向更多开发者。
 
-# 码云 Gitee
-git remote add gitee git@gitee.com:<your-org>/zhishu-gemini-desktop.git
-git push -u gitee main
-```
+### 建议 Topics / 标签
 
-建议 README Topics / 标签：`gemini` `gemini-api` `nano-banana` `香蕉` `banana` `veo` `wails` `golang` `openai-compatible` `智枢`
+`gemini` `gemini-api` `nano-banana` `香蕉` `banana` `veo` `text-to-image` `text-to-video` `wails` `golang` `desktop` `openai-compatible` `智枢` `开源桌面`
 
 ---
 
@@ -135,10 +154,5 @@ git push -u gitee main
 
 - 智枢门户与注册：https://api.itzyk.top/
 - API Base URL：`https://api.itzyk.top/v1`
-- 文档与价格：见门户站内「文档 / 价格 / 服务」
-
----
-
-## License
-
-MIT — 欢迎 Star、Fork、提 Issue / PR，一起把 Gemini API（含 **Nano Banana 香蕉** 文生图）推向更多开发者。
+- 贡献指南：[CONTRIBUTING.md](CONTRIBUTING.md)
+- 安全说明：[SECURITY.md](SECURITY.md)
