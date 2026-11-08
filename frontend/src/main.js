@@ -12,6 +12,7 @@ import {
   ResolveModel,
   SaveSettings,
 } from '../wailsjs/go/main/App'
+import { ClipboardSetText } from '../wailsjs/runtime/runtime'
 
 const state = {
   tab: 'portal',
@@ -237,19 +238,32 @@ $('btn-reload-portal').addEventListener('click', () => {
   setStatus($('portal-status'), '已刷新')
 })
 
-// Detect iframe block after a short wait (cross-origin often looks "empty")
-setTimeout(() => {
-  const frame = $('portal-frame')
+/**
+ * 根因：Wails(WKWebView) 内跨域 iframe 无法使用系统剪贴板（权限被拒，不是简单 UI bug）。
+ * 站点 Keys 页会 postMessage({ type:'zhishu-api-key', key })，此处接收后：
+ * 1) 填入输入框  2) 用 Wails ClipboardSetText 写入系统剪贴板  3) 可一键保存
+ */
+window.addEventListener('message', async (ev) => {
+  const allowed = ev.origin === 'https://api.itzyk.top' || ev.origin === 'http://localhost:5173' || ev.origin === 'http://127.0.0.1:5173'
+  if (!allowed) return
+  const data = ev.data
+  if (!data || data.type !== 'zhishu-api-key' || data.source !== 'zhishu-keys') return
+  const key = String(data.key || '').trim()
+  if (!key.startsWith('sk-')) return
+
+  $('portal-key').value = key
+  $('portal-key').type = 'text'
   try {
-    // Accessing cross-origin contentDocument throws; that means it likely loaded.
-    void frame.contentDocument
+    await ClipboardSetText(key)
+    setStatus($('portal-key-status'), '已从内嵌网页接收 Key，并写入系统剪贴板。请点「保存 Key」。', 'ok')
   } catch (_) {
-    setStatus($('portal-status'), '已加载外站（跨域正常）', 'ok')
-    return
+    setStatus($('portal-key-status'), '已从内嵌网页接收 Key。请点「保存 Key」。', 'ok')
   }
-  // Same-origin unexpected; or blank — show fallback hint softly
-  setStatus($('portal-status'), '若白屏，请用「系统浏览器打开」', '')
-}, 2500)
+})
+
+setTimeout(() => {
+  setStatus($('portal-status'), '内嵌页点「复制」会回传 Key 到下方（iframe 本身无剪贴板权限）', 'ok')
+}, 1500)
 
 async function loadSettings() {
   const s = await GetSettings()
