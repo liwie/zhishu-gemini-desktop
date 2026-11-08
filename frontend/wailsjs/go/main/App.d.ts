@@ -5,7 +5,7 @@ import {main} from '../models';
 
 export function Chat(arg1:string,arg2:string,arg3:Array<client.ChatMessage>):Promise<main.ChatResult>;
 
-export function GenerateImage(arg1:string,arg2:string,arg3:string):Promise<main.ImageResult>;
+export function GenerateImage(arg1:string,arg2:string,arg3:string,arg4:number):Promise<main.ImageResult>;
 
 export function GenerateVideo(arg1:string,arg2:string,arg3:number):Promise<main.VideoResult>;
 
@@ -22,3 +22,5 @@ export function OpenURL(arg1:string):Promise<void>;
 export function ResolveModel(arg1:string):Promise<string>;
 
 export function SaveSettings(arg1:string,arg2:string):Promise<string>;
+
+export function TestVideoAPI():Promise<Record<string, string>>;

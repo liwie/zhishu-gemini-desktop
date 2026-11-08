@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -110,6 +111,8 @@ type VideoStartResponse struct {
 	Status    string    `json:"status"`
 	StatusURL string    `json:"status_url"`
 	Model     string    `json:"model"`
+	Done      bool      `json:"done"`
+	VideoURL  string    `json:"video_url"`
 	Error     *APIError `json:"error,omitempty"`
 }
 
@@ -157,7 +160,7 @@ func (c *Client) Chat(ctx context.Context, model, userMessage string, history []
 
 	req := ChatRequest{Model: model, Messages: msgs, Stream: false}
 	var out ChatResponse
-	if err := c.postJSON(ctx, "/chat/completions", req, &out); err != nil {
+	if err := c.postJSONRetry(ctx, "/chat/completions", req, &out, 2); err != nil {
 		return nil, err
 	}
 	if out.Error != nil && out.Error.Message != "" {
@@ -205,22 +208,18 @@ func (c *Client) GenerateVideo(ctx context.Context, model, prompt string, durati
 		return nil, err
 	}
 	resolved := ResolveModel(model)
-	if resolved == "" || resolved == "veo-3.1-lite-generate-preview" {
+	if resolved == "" {
 		resolved = "veo-3.1-fast-generate-preview"
 	}
-	// Veo 仅支持 4 / 6 / 8 秒
-	switch durationSec {
-	case 4, 6, 8:
-	default:
-		if durationSec <= 0 {
-			durationSec = 4
-		} else if durationSec < 6 {
-			durationSec = 4
-		} else if durationSec < 8 {
-			durationSec = 6
-		} else {
-			durationSec = 8
-		}
+	// Omni 支持约 3–15 秒；网关会对 Veo preview 自动改走 Omni
+	if durationSec <= 0 {
+		durationSec = 5
+	}
+	if durationSec < 3 {
+		durationSec = 3
+	}
+	if durationSec > 15 {
+		durationSec = 15
 	}
 	req := VideoRequest{Model: resolved, Prompt: prompt, DurationSeconds: durationSec}
 	var start VideoStartResponse
@@ -229,6 +228,16 @@ func (c *Client) GenerateVideo(ctx context.Context, model, prompt string, durati
 	}
 	if start.Error != nil && start.Error.Message != "" {
 		return nil, start.Error
+	}
+	// Omni 同步完成：直接返回可播放地址
+	if start.Done || start.Status == "completed" || start.VideoURL != "" {
+		return &VideoStatusResponse{
+			ID:       start.ID,
+			Name:     start.Name,
+			Done:     true,
+			Status:   "completed",
+			VideoURL: absoluteURL(c.BaseURL, start.VideoURL),
+		}, nil
 	}
 
 	statusPath := start.StatusURL
@@ -239,7 +248,7 @@ func (c *Client) GenerateVideo(ctx context.Context, model, prompt string, durati
 		statusPath = "/videos/operations/" + strings.TrimPrefix(start.ID, "/")
 	}
 	if statusPath == "" {
-		return nil, fmt.Errorf("视频任务已创建，但未返回 status_url")
+		return nil, fmt.Errorf("视频任务已创建，但未返回 status_url / video_url")
 	}
 
 	deadline := time.Now().Add(6 * time.Minute)
@@ -286,18 +295,42 @@ func (c *Client) ListModels(ctx context.Context) (json.RawMessage, error) {
 }
 
 func (c *Client) postJSON(ctx context.Context, path string, body any, out any) error {
+	return c.postJSONRetry(ctx, path, body, out, 1)
+}
+
+func (c *Client) postJSONRetry(ctx context.Context, path string, body any, out any, attempts int) error {
+	if attempts < 1 {
+		attempts = 1
+	}
 	raw, err := json.Marshal(body)
 	if err != nil {
 		return err
 	}
 	url := joinURL(c.BaseURL, path)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(raw))
-	if err != nil {
-		return err
+	var last error
+	for i := 0; i < attempts; i++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(raw))
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+c.APIKey)
+		last = c.do(req, out)
+		if last == nil {
+			return nil
+		}
+		msg := last.Error()
+		if i+1 < attempts && (strings.Contains(msg, "502") || strings.Contains(msg, "网关暂时不可用") || strings.Contains(msg, "Bad Gateway")) {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(time.Duration(400*(i+1)) * time.Millisecond):
+			}
+			continue
+		}
+		return last
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.APIKey)
-	return c.do(req, out)
+	return last
 }
 
 func (c *Client) getJSON(ctx context.Context, path string, out any) error {
@@ -333,6 +366,10 @@ func (c *Client) do(req *http.Request, out any) error {
 			return fmt.Errorf("HTTP %d: %s", resp.StatusCode, ae.Error.Error())
 		}
 		msg := strings.TrimSpace(string(b))
+		low := strings.ToLower(msg)
+		if resp.StatusCode == 502 || strings.Contains(low, "bad gateway") || strings.Contains(low, "<html") {
+			return fmt.Errorf("HTTP %d: 网关暂时不可用（nginx/上游 502），请数秒后重试", resp.StatusCode)
+		}
 		if len(msg) > 400 {
 			msg = msg[:400] + "…"
 		}
@@ -345,6 +382,45 @@ func (c *Client) do(req *http.Request, out any) error {
 		return fmt.Errorf("解析响应失败: %w", err)
 	}
 	return nil
+}
+
+// FetchMediaDataURL downloads an authenticated media URL and returns a data: URL for <img>/<video>.
+func (c *Client) FetchMediaDataURL(ctx context.Context, mediaURL string) (string, error) {
+	if err := c.ensure(); err != nil {
+		return "", err
+	}
+	mediaURL = absoluteURL(c.BaseURL, mediaURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, mediaURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.APIKey)
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("下载媒体失败 HTTP %d", resp.StatusCode)
+	}
+	ct := resp.Header.Get("Content-Type")
+	if ct == "" {
+		ct = "application/octet-stream"
+		if strings.Contains(mediaURL, "/videos/") {
+			ct = "video/mp4"
+		} else if strings.Contains(mediaURL, "/images/") {
+			ct = "image/png"
+		}
+	}
+	// strip charset etc.
+	if i := strings.Index(ct, ";"); i >= 0 {
+		ct = strings.TrimSpace(ct[:i])
+	}
+	return "data:" + ct + ";base64," + base64.StdEncoding.EncodeToString(b), nil
 }
 
 func joinURL(base, path string) string {

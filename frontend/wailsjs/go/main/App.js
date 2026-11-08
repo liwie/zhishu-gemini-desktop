@@ -6,8 +6,8 @@ export function Chat(arg1, arg2, arg3) {
   return window['go']['main']['App']['Chat'](arg1, arg2, arg3);
 }
 
-export function GenerateImage(arg1, arg2, arg3) {
-  return window['go']['main']['App']['GenerateImage'](arg1, arg2, arg3);
+export function GenerateImage(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['GenerateImage'](arg1, arg2, arg3, arg4);
 }
 
 export function GenerateVideo(arg1, arg2, arg3) {
@@ -40,4 +40,8 @@ export function ResolveModel(arg1) {
 
 export function SaveSettings(arg1, arg2) {
   return window['go']['main']['App']['SaveSettings'](arg1, arg2);
+}
+
+export function TestVideoAPI() {
+  return window['go']['main']['App']['TestVideoAPI']();
 }

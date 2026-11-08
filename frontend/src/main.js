@@ -11,6 +11,7 @@ import {
   OpenURL,
   ResolveModel,
   SaveSettings,
+  TestVideoAPI,
 } from '../wailsjs/go/main/App'
 import { ClipboardSetText } from '../wailsjs/runtime/runtime'
 
@@ -125,6 +126,16 @@ document.querySelector('#app').innerHTML = `
             <option value="1024x1792">1024×1792 (9:16)</option>
           </select>
         </div>
+        <div class="field">
+          <label>张数</label>
+          <select id="image-count">
+            <option value="1" selected>1 张</option>
+            <option value="2">2 张</option>
+            <option value="3">3 张</option>
+            <option value="4">4 张</option>
+            <option value="5">5 张</option>
+          </select>
+        </div>
       </div>
       <div class="field">
         <label>提示词</label>
@@ -141,24 +152,26 @@ document.querySelector('#app').innerHTML = `
 
     <section class="panel" id="panel-video">
       <div class="panel-head">
-        <h2>Gemini 文生视频（Veo）</h2>
-        <p>异步任务：<code>POST /v1/videos/generations</code> → 轮询 <code>/v1/videos/operations/…</code>。按秒计费，建议先用短时长联调。</p>
+        <h2>Gemini 文生视频</h2>
+        <p>Veo preview 已下线，网关自动改走 <code>gemini-omni-1.2-flash</code>。先点「测试视频 API」验证连通（只调 /v1/models，不消耗生成算力）。</p>
       </div>
       <div class="toolbar">
         <div class="field grow">
           <label>模型</label>
           <select id="video-model">
-            <option value="veo-3.1-fast-generate-preview" selected>veo-3.1-fast（推荐试跑）</option>
-            <option value="veo-3.1-generate-preview">veo-3.1-generate（最强）</option>
-            <option value="veo">veo（别名 → fast）</option>
+            <option value="veo-3.1-fast-generate-preview" selected>veo-3.1-fast → Omni（推荐）</option>
+            <option value="veo-3.1-generate-preview">veo-3.1-generate → Omni</option>
+            <option value="gemini-omni-1.2-flash">gemini-omni-1.2-flash</option>
           </select>
         </div>
         <div class="field">
           <label>时长（秒）</label>
           <select id="video-duration">
-            <option value="4" selected>4</option>
+            <option value="4">4</option>
+            <option value="5" selected>5（默认）</option>
             <option value="6">6</option>
             <option value="8">8</option>
+            <option value="10">10</option>
           </select>
         </div>
       </div>
@@ -167,11 +180,12 @@ document.querySelector('#app').innerHTML = `
         <textarea id="video-prompt" rows="3" placeholder="航拍镜头：清晨雪山云海缓缓流动，金色阳光洒在雪峰上…"></textarea>
       </div>
       <div class="toolbar">
+        <button class="btn ghost" id="btn-video-test">测试视频 API</button>
         <button class="btn" id="btn-video">生成视频</button>
         <span class="status-line" id="video-status"></span>
       </div>
       <div class="media-result" id="video-result">
-        <div class="placeholder">视频生成通常需要 1～3 分钟，请耐心等待。</div>
+        <div class="placeholder">生成成功后可在此直接播放。</div>
       </div>
     </section>
 
@@ -357,6 +371,13 @@ async function sendChat() {
   }
 }
 
+function toDataImageSrc(b64, mime) {
+  if (!b64) return ''
+  const m = mime || 'image/png'
+  if (b64.startsWith('data:')) return b64
+  return `data:${m};base64,${b64}`
+}
+
 $('btn-image').addEventListener('click', async () => {
   if (state.busy) return
   const prompt = $('image-prompt').value.trim()
@@ -366,24 +387,51 @@ $('btn-image').addEventListener('click', async () => {
   }
   const model = $('image-model').value.trim() || '香蕉'
   const size = $('image-size').value
+  const n = parseInt($('image-count').value, 10) || 1
   setBusy(true)
-  setStatus($('image-status'), '解析别名并生成中…（香蕉 → Nano Banana Pro）')
+  setStatus($('image-status'), '生成中…')
   try {
     const resolved = await ResolveModel(model)
-    setStatus($('image-status'), `使用模型 ${resolved}，生成中…`)
-    const res = await GenerateImage(model, prompt, size)
-    const url = res.image_url || (res.urls && res.urls[0]) || ''
+    setStatus($('image-status'), `使用模型 ${resolved}，生成 ${n} 张…`)
+    const res = await GenerateImage(model, prompt, size, n)
     const box = $('image-result')
-    if (url) {
-      box.innerHTML = `<img src="${url}" alt="Nano Banana 香蕉 生成图"/><p class="placeholder" style="margin-top:10px">模型：${escapeHtml(res.model || resolved)}</p>`
+    const items = Array.isArray(res.images) && res.images.length ? res.images : []
+    const htmlParts = []
+    if (items.length) {
+      for (const it of items) {
+        const src = toDataImageSrc(it.b64_json, it.mime) || it.url
+        if (src) htmlParts.push(`<img src="${src}" alt="Nano Banana 香蕉 生成图" style="max-width:100%;margin:8px 0;border-radius:10px"/>`)
+      }
     } else if (res.b64_json) {
-      box.innerHTML = `<img src="data:image/png;base64,${res.b64_json}" alt="Nano Banana 香蕉 生成图"/>`
+      htmlParts.push(`<img src="${toDataImageSrc(res.b64_json)}" alt="Nano Banana 香蕉 生成图"/>`)
+    } else if (res.image_url || (res.urls && res.urls[0])) {
+      // URL 需鉴权，通常无法直接 <img>；尽量不用
+      htmlParts.push(`<div class="placeholder">已返回下载 URL，但需鉴权无法直接预览。请重试或检查网关是否返回 b64_json。</div>`)
+    }
+    if (!htmlParts.length) {
+      box.innerHTML = '<div class="placeholder">未返回可显示的图片数据</div>'
     } else {
-      box.innerHTML = '<div class="placeholder">未返回图片 URL</div>'
+      box.innerHTML = htmlParts.join('') + `<p class="placeholder" style="margin-top:10px">模型：${escapeHtml(res.model || resolved)} · ${htmlParts.length} 张</p>`
     }
     setStatus($('image-status'), '完成 · ' + (res.model || resolved), 'ok')
   } catch (e) {
     setStatus($('image-status'), String(e), 'error')
+  } finally {
+    setBusy(false)
+  }
+})
+
+$('btn-video-test').addEventListener('click', async () => {
+  if (state.busy) return
+  setBusy(true)
+  setStatus($('video-status'), '正在测试 /v1/models（不计视频算力）…')
+  try {
+    const res = await TestVideoAPI()
+    const ok = res && res.ok === 'true'
+    setStatus($('video-status'), res.message || (ok ? '测试成功' : '测试失败'), ok ? 'ok' : 'error')
+    $('video-result').innerHTML = `<div class="placeholder">${escapeHtml(res.message || '')}</div>`
+  } catch (e) {
+    setStatus($('video-status'), String(e), 'error')
   } finally {
     setBusy(false)
   }
@@ -397,23 +445,28 @@ $('btn-video').addEventListener('click', async () => {
     return
   }
   const model = $('video-model').value
-  const duration = parseInt($('video-duration').value, 10) || 4
+  const duration = parseInt($('video-duration').value, 10) || 5
   setBusy(true)
-  setStatus($('video-status'), '已提交任务，轮询中（可能需 1～3 分钟）…')
+  setStatus($('video-status'), '生成中（Omni，可能需数十秒到数分钟）…')
   $('video-result').innerHTML = '<div class="placeholder">生成中，请勿关闭…</div>'
   try {
     const res = await GenerateVideo(model, prompt, duration)
     const box = $('video-result')
-    if (res.video_url) {
-      box.innerHTML = `<video controls src="${res.video_url}"></video>
-        <p class="placeholder" style="margin-top:10px"><a href="#" id="open-video">在浏览器打开视频</a></p>`
+    const playSrc = res.video_data_url || ''
+    if (playSrc) {
+      box.innerHTML = `<video controls src="${playSrc}" style="max-width:100%;max-height:100%;border-radius:10px"></video>
+        <p class="placeholder" style="margin-top:10px">可直接播放 · id=${escapeHtml(res.id || '')}</p>`
+      setStatus($('video-status'), '完成 · ' + (res.status || 'completed'), 'ok')
+    } else if (res.video_url) {
+      box.innerHTML = `<div class="placeholder">已生成，但内嵌播放需要鉴权下载失败。<br/>
+        <a href="#" id="open-video">在系统浏览器打开（仍可能需登录态）</a></div>`
       $('open-video')?.addEventListener('click', (e) => {
         e.preventDefault()
         OpenURL(res.video_url)
       })
-      setStatus($('video-status'), '完成 · ' + (res.status || 'completed'), 'ok')
+      setStatus($('video-status'), '完成但未能内嵌播放', 'error')
     } else {
-      box.innerHTML = `<div class="placeholder">任务结束但无 video_url<br/>id=${escapeHtml(res.id || '')}</div>`
+      box.innerHTML = `<div class="placeholder">任务结束但无视频数据<br/>id=${escapeHtml(res.id || '')}</div>`
       setStatus($('video-status'), '无视频地址', 'error')
     }
   } catch (e) {
