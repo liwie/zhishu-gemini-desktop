@@ -1,0 +1,20 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "zhishu-gemini-desktop",
+  "outputfilename": "zhishu-gemini-desktop",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "ZhiShu Community",
+    "email": "opensource@itzyk.top"
+  },
+  "info": {
+    "companyName": "智枢 ZhiShu",
+    "productName": "智枢 Gemini Desktop",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright 2026",
+    "comments": "Open-source Gemini desktop client: chat, Nano Banana / 香蕉 image, Veo video. API via https://api.itzyk.top/"
+  }
+}

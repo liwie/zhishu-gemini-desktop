@@ -1,0 +1,14 @@
+build/bin
+node_modules
+frontend/dist
+frontend/wailsjs/runtime/package.json.bak
+*.exe
+*.app
+*.dmg
+*.syso
+.DS_Store
+.idea/
+.vscode/
+*.local
+.env
+*.log
