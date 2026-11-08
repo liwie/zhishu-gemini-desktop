@@ -12,3 +12,4 @@ frontend/wailsjs/runtime/package.json.bak
 *.local
 .env
 *.log
+frontend/package.json.md5
