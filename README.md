@@ -25,7 +25,7 @@
 
 ## 仓库地址
 
-- GitHub：<https://github.com/Itzyk/zhishu-gemini-desktop>
+- GitHub：<https://github.com/liwie/zhishu-gemini-desktop>
 - Gitee（码云）：<https://gitee.com/Itzyk/zhishu-gemini-desktop>
 
 > 若上方链接暂未生效，请以发布后实际地址为准；欢迎 Star / Fork / Issue / PR。
@@ -44,7 +44,7 @@
 
 ```bash
 # GitHub
-git clone https://github.com/Itzyk/zhishu-gemini-desktop.git
+git clone https://github.com/liwie/zhishu-gemini-desktop.git
 # 或 Gitee
 # git clone https://gitee.com/Itzyk/zhishu-gemini-desktop.git
 
