@@ -127,6 +127,12 @@ type VideoStatusResponse struct {
 	Error *APIError `json:"error,omitempty"`
 }
 
+const defaultChatSystem = `你是「智枢 Gemini 桌面客户端」助手。请遵守：
+1. 默认用简体中文回答，语气自然。
+2. 优先按中文互联网语境理解用户输入（例如「666」表示夸赞「厉害/牛」，不是要你长篇介绍数字 666 的圣经或数学含义，除非用户明确问百科）。
+3. 回答先给结论，再补必要说明；避免无关的英文百科堆砌。
+4. 用户若明确要求英文或其他语言，再切换。`
+
 func (c *Client) Chat(ctx context.Context, model, userMessage string, history []ChatMessage) (*ChatResponse, error) {
 	if err := c.ensure(); err != nil {
 		return nil, err
@@ -135,7 +141,17 @@ func (c *Client) Chat(ctx context.Context, model, userMessage string, history []
 	if model == "" {
 		model = "gemini-3.6-flash"
 	}
-	msgs := make([]ChatMessage, 0, len(history)+1)
+	msgs := make([]ChatMessage, 0, len(history)+2)
+	hasSystem := false
+	for _, m := range history {
+		if m.Role == "system" {
+			hasSystem = true
+			break
+		}
+	}
+	if !hasSystem {
+		msgs = append(msgs, ChatMessage{Role: "system", Content: defaultChatSystem})
+	}
 	msgs = append(msgs, history...)
 	msgs = append(msgs, ChatMessage{Role: "user", Content: userMessage})
 
@@ -159,7 +175,7 @@ func (c *Client) GenerateImage(ctx context.Context, model, prompt, size string, 
 	}
 	resolved := ResolveModel(model)
 	if resolved == "" {
-		resolved = "gemini-3-pro-image"
+		resolved = "gemini-3.1-flash-image"
 	}
 	if n <= 0 {
 		n = 1
@@ -189,11 +205,22 @@ func (c *Client) GenerateVideo(ctx context.Context, model, prompt string, durati
 		return nil, err
 	}
 	resolved := ResolveModel(model)
-	if resolved == "" {
-		resolved = "veo-3.1-generate-preview"
+	if resolved == "" || resolved == "veo-3.1-lite-generate-preview" {
+		resolved = "veo-3.1-fast-generate-preview"
 	}
-	if durationSec <= 0 {
-		durationSec = 5
+	// Veo 仅支持 4 / 6 / 8 秒
+	switch durationSec {
+	case 4, 6, 8:
+	default:
+		if durationSec <= 0 {
+			durationSec = 4
+		} else if durationSec < 6 {
+			durationSec = 4
+		} else if durationSec < 8 {
+			durationSec = 6
+		} else {
+			durationSec = 8
+		}
 	}
 	req := VideoRequest{Model: resolved, Prompt: prompt, DurationSeconds: durationSec}
 	var start VideoStartResponse

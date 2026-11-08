@@ -108,13 +108,13 @@ document.querySelector('#app').innerHTML = `
         <h2>Gemini 文生图 · Nano Banana / 香蕉</h2>
         <p>
           <span class="tag">香蕉</span><span class="tag">banana</span><span class="tag">nano-banana</span>
-          社区别名会解析为 <code>gemini-3-pro-image</code>（Nano Banana Pro）。
+          默认「香蕉」→ <code>gemini-3.1-flash-image</code>；「香蕉pro」→ <code>gemini-3-pro-image</code>（Nano Banana Pro）。
         </p>
       </div>
       <div class="toolbar">
         <div class="field grow">
           <label>模型 / 别名</label>
-          <input id="image-model" list="image-aliases" value="香蕉" placeholder="香蕉 / banana / gemini-3-pro-image"/>
+          <input id="image-model" list="image-aliases" value="香蕉" placeholder="香蕉 / 香蕉pro / gemini-3.1-flash-image"/>
           <datalist id="image-aliases"></datalist>
         </div>
         <div class="field">
@@ -148,15 +148,18 @@ document.querySelector('#app').innerHTML = `
         <div class="field grow">
           <label>模型</label>
           <select id="video-model">
-            <option value="veo-3.1-lite-generate-preview">veo-3.1-lite（便宜试跑）</option>
-            <option value="veo-3.1-fast-generate-preview">veo-3.1-fast</option>
+            <option value="veo-3.1-fast-generate-preview" selected>veo-3.1-fast（推荐试跑）</option>
             <option value="veo-3.1-generate-preview">veo-3.1-generate（最强）</option>
-            <option value="veo">veo（别名 → generate）</option>
+            <option value="veo">veo（别名 → fast）</option>
           </select>
         </div>
         <div class="field">
           <label>时长（秒）</label>
-          <input id="video-duration" type="number" min="4" max="8" value="5"/>
+          <select id="video-duration">
+            <option value="4" selected>4</option>
+            <option value="6">6</option>
+            <option value="8">8</option>
+          </select>
         </div>
       </div>
       <div class="field">
@@ -394,7 +397,7 @@ $('btn-video').addEventListener('click', async () => {
     return
   }
   const model = $('video-model').value
-  const duration = parseInt($('video-duration').value, 10) || 5
+  const duration = parseInt($('video-duration').value, 10) || 4
   setBusy(true)
   setStatus($('video-status'), '已提交任务，轮询中（可能需 1～3 分钟）…')
   $('video-result').innerHTML = '<div class="placeholder">生成中，请勿关闭…</div>'
